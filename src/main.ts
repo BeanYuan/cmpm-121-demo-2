@@ -33,6 +33,7 @@ const thick = 10;
 const defaultXY = 0;
 let stickerIcon = "*";
 const redoStack: { x: number; y: number }[][] = [];
+const stickers = ["🙂", "😺", "🌟"];
 
 class CursorCommand {
   constructor(
@@ -50,7 +51,12 @@ class CursorCommand {
 let currentCursor: CursorCommand | null = null;
 
 function redraw() {
-  context.clearRect(defaultXY, defaultXY, canvasElement.width, canvasElement.height);
+  context.clearRect(
+    defaultXY,
+    defaultXY,
+    canvasElement.width,
+    canvasElement.height,
+  );
   context.lineWidth = currentThickness;
   context.lineCap = "round";
   context.lineJoin = "round";
@@ -72,6 +78,24 @@ function redraw() {
   if (currentCursor) {
     currentCursor.execute();
   }
+}
+
+function renderStickerButtons() {
+  // First, remove all existing sticker buttons
+  const existingStickerButtons = document.querySelectorAll(".stickerButton");
+  existingStickerButtons.forEach((btn) => btn.remove());
+
+  // Now, create and append buttons based on the stickers array
+  stickers.forEach((sticker) => {
+    const button = document.createElement("button");
+    button.textContent = sticker;
+    button.classList.add("stickerButton"); // adding a class to identify sticker buttons
+    button.addEventListener("click", () => {
+      stickerIcon = sticker;
+      canvasElement.dispatchEvent(new Event("tool-moved"));
+    });
+    app?.appendChild(button);
+  });
 }
 
 function tick() {
@@ -140,7 +164,12 @@ const clearButton = document.createElement("button");
 clearButton.textContent = "Clear";
 clearButton.addEventListener("click", () => {
   paths = [];
-  context?.clearRect(defaultXY, defaultXY, canvasElement.width, canvasElement.height);
+  context?.clearRect(
+    defaultXY,
+    defaultXY,
+    canvasElement.width,
+    canvasElement.height,
+  );
 });
 app?.appendChild(clearButton);
 
@@ -188,14 +217,18 @@ thickMarkerButton.addEventListener("click", () => {
 });
 app?.appendChild(thickMarkerButton);
 
-const stickerButtons = ["🙂", "😺", "🌟"];
-stickerButtons.forEach((sticker) => {
-  const button = document.createElement("button");
-  button.textContent = sticker;
-  button.addEventListener("click", () => {
-    stickerIcon = sticker;
-    //currentCursor = new CursorCommand(0, 0, sticker);
-    canvasElement.dispatchEvent(new Event("tool-moved"));
-  });
-  app?.appendChild(button);
+const breakElement2 = document.createElement("br");
+app?.appendChild(breakElement2);
+
+renderStickerButtons();
+
+const customStickerButton = document.createElement("button");
+customStickerButton.textContent = "Add Custom Sticker";
+customStickerButton.addEventListener("click", () => {
+  const customSticker = prompt("Enter a custom sticker:", "");
+  if (customSticker) {
+    stickers.push(customSticker);
+    renderStickerButtons();
+  }
 });
+app?.appendChild(customStickerButton);
