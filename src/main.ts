@@ -22,136 +22,180 @@ app?.appendChild(canvasElement);
 const breakElement = document.createElement("br");
 app?.appendChild(breakElement);
 
-const context = canvasElement.getContext("2d");
+const context = canvasElement.getContext("2d")!;
 let drawing = false;
 
-let paths: { x: number, y: number }[][] = [];
-let currentPath: { x: number, y: number }[] = [];
+let paths: { x: number; y: number }[][] = [];
+let currentPath: { x: number; y: number }[] = [];
 let currentThickness = 5;
-const redoStack: { x: number, y: number }[][] = [];
+const thin = 2;
+const thick = 10;
+const defaultXY = 0;
+let stickerIcon = "*";
+const redoStack: { x: number; y: number }[][] = [];
 
-// ToolPreviewCommand for previewing the tool
-class ToolPreviewCommand {
-    constructor(public x: number, public y: number, public width: number) {}
+class CursorCommand {
+  constructor(
+    public x: number,
+    public y: number,
+    public icon: string,
+  ) {}
 
-    draw(ctx: CanvasRenderingContext2D) {
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.5)"; // semi-transparent black
-        ctx.lineWidth = this.width;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2);
-        ctx.stroke();
-    }
+  execute() {
+    context.font = "32px monospace";
+    context.fillText(this.icon, this.x, this.y);
+  }
 }
 
-let toolPreviewCommand: ToolPreviewCommand | null = null;
+let currentCursor: CursorCommand | null = null;
+
+function redraw() {
+  context.clearRect(defaultXY, defaultXY, canvasElement.width, canvasElement.height);
+  context.lineWidth = currentThickness;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.strokeStyle = "black";
+
+  paths.forEach((path) => {
+    if (path.length) {
+      context?.beginPath();
+      const { x, y } = path[defaultXY];
+      context?.moveTo(x, y);
+
+      for (const point of path) {
+        context?.lineTo(point.x, point.y);
+      }
+      context?.stroke();
+    }
+  });
+
+  if (currentCursor) {
+    currentCursor.execute();
+  }
+}
+
+function tick() {
+  redraw();
+  requestAnimationFrame(tick);
+}
+tick();
+
+canvasElement.addEventListener("mouseenter", (event: MouseEvent) => {
+  currentCursor = new CursorCommand(event.offsetX, event.offsetY, stickerIcon);
+  canvasElement.dispatchEvent(new Event("drawing-changed"));
+});
 
 canvasElement.addEventListener("mousemove", (event: MouseEvent) => {
-    const x = event.clientX - canvasElement.offsetLeft;
-    const y = event.clientY - canvasElement.offsetTop;
-
-    if (drawing) {
-        currentPath.push({ x, y });
-        context?.lineTo(x, y);
-        context?.stroke();
-    } else {
-        toolPreviewCommand = new ToolPreviewCommand(x, y, currentThickness);
-        canvasElement.dispatchEvent(new Event("tool-moved"));
+  const x = event.offsetX;
+  const y = event.offsetY;
+  currentCursor = new CursorCommand(x, y, stickerIcon);
+  if (drawing) {
+    if (!currentPath.length) {
+      paths.push(currentPath);
     }
+    currentPath.push({ x, y });
+    redraw();
+  }
+});
+
+canvasElement.addEventListener("mouseleave", () => {
+  currentCursor = null;
+  canvasElement.dispatchEvent(new Event("drawing-changed"));
 });
 
 canvasElement.addEventListener("mousedown", (event: MouseEvent) => {
-    drawing = true;
-    toolPreviewCommand = null; // remove the tool preview when drawing starts
-
-    // Start the path right away on mouse down
-    const x = event.clientX - canvasElement.offsetLeft;
-    const y = event.clientY - canvasElement.offsetTop;
-    currentPath = [{ x, y }];
-    context?.beginPath();
-    context?.moveTo(x, y);
+  drawing = true;
+  const x = event.offsetX;
+  const y = event.offsetY;
+  currentCursor = new CursorCommand(x, y, stickerIcon);
+  context?.beginPath();
+  context?.moveTo(x, y);
+  currentPath = [{ x, y }];
 });
 
 canvasElement.addEventListener("mouseup", () => {
-    drawing = false;
-    if (currentPath.length) {
-        paths.push(currentPath);
-    }
-    canvasElement.dispatchEvent(new Event("drawing-changed"));
-    context?.closePath();
+  drawing = false;
+  currentCursor = null;
+  if (currentPath.length) {
+    paths.push(currentPath);
+    currentPath = [];
+  }
+  canvasElement.dispatchEvent(new Event("drawing-changed"));
+  context?.closePath();
 });
 
 canvasElement.addEventListener("drawing-changed", () => {
-    context?.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    context!.lineWidth = currentThickness;
-    context!.lineCap = "round";
-    context!.lineJoin = "round";
-    context!.strokeStyle = "black";
+  redraw();
+});
 
-    paths.forEach(path => {
-        context?.beginPath();
-        for (let i = 0; i < path.length; i++) {
-            if (i === 0) {
-                context?.moveTo(path[i].x, path[i].y);
-            } else {
-                context?.lineTo(path[i].x, path[i].y);
-                context?.stroke();
-            }
-        }
-    });
-
-    if (toolPreviewCommand) {
-        toolPreviewCommand.draw(context!);
-    }
+canvasElement.addEventListener("cursor-changed", () => {
+  redraw();
 });
 
 canvasElement.addEventListener("tool-moved", () => {
-    canvasElement.dispatchEvent(new Event("drawing-changed"));
+  canvasElement.dispatchEvent(new Event("drawing-changed"));
 });
 
 const clearButton = document.createElement("button");
 clearButton.textContent = "Clear";
 clearButton.addEventListener("click", () => {
-    paths = [];
-    context?.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  paths = [];
+  context?.clearRect(defaultXY, defaultXY, canvasElement.width, canvasElement.height);
 });
 app?.appendChild(clearButton);
 
 const undoButton = document.createElement("button");
 undoButton.textContent = "Undo";
 undoButton.addEventListener("click", () => {
-    if (paths.length) {
-        const poppedPath = paths.pop();
-        redoStack.push(poppedPath!);
-        canvasElement.dispatchEvent(new Event("drawing-changed"));
-    }
+  if (paths.length) {
+    const poppedPath = paths.pop();
+    redoStack.push(poppedPath!);
+    canvasElement.dispatchEvent(new Event("drawing-changed"));
+  }
 });
 app?.appendChild(undoButton);
 
 const redoButton = document.createElement("button");
 redoButton.textContent = "Redo";
 redoButton.addEventListener("click", () => {
-    if (redoStack.length) {
-        const poppedRedoPath = redoStack.pop();
-        paths.push(poppedRedoPath!);
-        canvasElement.dispatchEvent(new Event("drawing-changed"));
-    }
+  if (redoStack.length) {
+    const poppedRedoPath = redoStack.pop();
+    paths.push(poppedRedoPath!);
+    canvasElement.dispatchEvent(new Event("drawing-changed"));
+  }
 });
 app?.appendChild(redoButton);
 
 const thinMarkerButton = document.createElement("button");
 thinMarkerButton.textContent = "Thin Marker";
 thinMarkerButton.addEventListener("click", () => {
-    currentThickness = 2;
-    document.querySelectorAll(".selectedTool").forEach(button => button.classList.remove("selectedTool"));
-    thinMarkerButton.classList.add("selectedTool");
+  currentThickness = thin;
+  document
+    .querySelectorAll(".selectedTool")
+    .forEach((button) => button.classList.remove("selectedTool"));
+  thinMarkerButton.classList.add("selectedTool");
 });
 app?.appendChild(thinMarkerButton);
 
 const thickMarkerButton = document.createElement("button");
 thickMarkerButton.textContent = "Thick Marker";
 thickMarkerButton.addEventListener("click", () => {
-    currentThickness = 10;
-    document.querySelectorAll(".selectedTool").forEach(button => button.classList.remove("selectedTool"));
-    thickMarkerButton.classList.add("selectedTool");
+  currentThickness = thick;
+  document
+    .querySelectorAll(".selectedTool")
+    .forEach((button) => button.classList.remove("selectedTool"));
+  thickMarkerButton.classList.add("selectedTool");
 });
 app?.appendChild(thickMarkerButton);
+
+const stickerButtons = ["🙂", "😺", "🌟"];
+stickerButtons.forEach((sticker) => {
+  const button = document.createElement("button");
+  button.textContent = sticker;
+  button.addEventListener("click", () => {
+    stickerIcon = sticker;
+    //currentCursor = new CursorCommand(0, 0, sticker);
+    canvasElement.dispatchEvent(new Event("tool-moved"));
+  });
+  app?.appendChild(button);
+});
