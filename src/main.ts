@@ -27,6 +27,7 @@ let drawing = false;
 
 let paths: { x: number, y: number }[][] = [];
 let currentPath: { x: number, y: number }[] = [];
+let currentThickness = 5;
 const redoStack: { x: number, y: number }[][] = [];
 
 canvasElement.addEventListener("mousedown", () => {
@@ -56,7 +57,7 @@ canvasElement.addEventListener("mousemove", (event: MouseEvent) => {
 
 canvasElement.addEventListener("drawing-changed", () => {
     context?.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    context!.lineWidth = 5;
+    context!.lineWidth = currentThickness;
     context!.lineCap = "round";
     context!.lineJoin = "round";
     context!.strokeStyle = "black";
@@ -103,3 +104,21 @@ redoButton.addEventListener("click", () => {
     }
 });
 app?.appendChild(redoButton);
+
+const thinMarkerButton = document.createElement("button");
+thinMarkerButton.textContent = "Thin Marker";
+thinMarkerButton.addEventListener("click", () => {
+    currentThickness = 2;
+    document.querySelectorAll(".selectedTool").forEach(button => button.classList.remove("selectedTool"));
+    thinMarkerButton.classList.add("selectedTool");
+});
+app?.appendChild(thinMarkerButton);
+
+const thickMarkerButton = document.createElement("button");
+thickMarkerButton.textContent = "Thick Marker";
+thickMarkerButton.addEventListener("click", () => {
+    currentThickness = 10;
+    document.querySelectorAll(".selectedTool").forEach(button => button.classList.remove("selectedTool"));
+    thickMarkerButton.classList.add("selectedTool");
+});
+app?.appendChild(thickMarkerButton);

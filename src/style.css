@@ -87,3 +87,8 @@ canvas {
   border-radius: 8px; /* Friendly rounded corners */
   box-shadow: 3px 3px 5px rgba(0,0,0,0.3); /* Nice drop shadow effect */
 }
+
+.selectedTool {
+  background-color: #007BFF;
+  color: #FFFFFF;
+}
