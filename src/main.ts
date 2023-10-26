@@ -22,7 +22,7 @@ app?.appendChild(canvasElement);
 const breakElement = document.createElement("br");
 app?.appendChild(breakElement);
 
-const context = canvasElement.getContext("2d")!;
+let context = canvasElement.getContext("2d")!;
 let drawing = false;
 
 let paths: { x: number; y: number }[][] = [];
@@ -216,6 +216,29 @@ thickMarkerButton.addEventListener("click", () => {
   thickMarkerButton.classList.add("selectedTool");
 });
 app?.appendChild(thickMarkerButton);
+
+const exportButton = document.createElement("button");
+exportButton.textContent = "Export";
+exportButton.addEventListener("click", () => {
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = 1024;
+    exportCanvas.height = 1024;
+
+    const exportCtx = exportCanvas.getContext("2d")!;
+    exportCtx.scale(4, 4);
+
+    const oldContext = context;
+    context = exportCtx;
+    redraw();
+    context = oldContext;
+
+    const link = document.createElement("a");
+    link.href = exportCanvas.toDataURL("image/png");
+    link.download = "drawing.png";
+    link.click();
+});
+app?.appendChild(exportButton);
+
 
 const breakElement2 = document.createElement("br");
 app?.appendChild(breakElement2);
