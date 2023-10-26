@@ -28,12 +28,12 @@ let drawing = false;
 let paths: { x: number; y: number }[][] = [];
 let currentPath: { x: number; y: number }[] = [];
 let currentThickness = 5;
-const thin = 2;
-const thick = 10;
+const thin = 4;
+const thick = 8;
 const defaultXY = 0;
 let stickerIcon = "*";
 const redoStack: { x: number; y: number }[][] = [];
-const stickers = ["🙂", "😺", "🌟"];
+const stickers = ["🙂", "😺", "🌟", "🎨", "🚀", "💡", "🎈", "🍕", "🍀", "❤️"];
 
 class CursorCommand {
   constructor(
@@ -43,7 +43,7 @@ class CursorCommand {
   ) {}
 
   execute() {
-    context.font = "32px monospace";
+    context.font = "48px monospace";
     context.fillText(this.icon, this.x, this.y);
   }
 }
