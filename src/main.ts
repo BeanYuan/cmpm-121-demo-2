@@ -32,6 +32,7 @@ const thin = 4;
 const thick = 8;
 const defaultXY = 0;
 let stickerIcon = "*";
+const currentHue = 0;
 const redoStack: { x: number; y: number }[][] = [];
 const stickers = ["🙂", "😺", "🌟", "🎨", "🚀", "💡", "🎈", "🍕", "🍀", "❤️"];
 
@@ -43,7 +44,7 @@ class CursorCommand {
   ) {}
 
   execute() {
-    context.font = "48px monospace";
+    context.font = "32px monospace";
     context.fillText(this.icon, this.x, this.y);
   }
 }
@@ -60,7 +61,7 @@ function redraw() {
   context.lineWidth = currentThickness;
   context.lineCap = "round";
   context.lineJoin = "round";
-  context.strokeStyle = "black";
+  context.strokeStyle = `hsl(${currentHue}, 100%, 50%)`;
 
   paths.forEach((path) => {
     if (path.length) {
@@ -81,15 +82,13 @@ function redraw() {
 }
 
 function renderStickerButtons() {
-  // First, remove all existing sticker buttons
   const existingStickerButtons = document.querySelectorAll(".stickerButton");
   existingStickerButtons.forEach((btn) => btn.remove());
 
-  // Now, create and append buttons based on the stickers array
   stickers.forEach((sticker) => {
     const button = document.createElement("button");
     button.textContent = sticker;
-    button.classList.add("stickerButton"); // adding a class to identify sticker buttons
+    button.classList.add("stickerButton");
     button.addEventListener("click", () => {
       stickerIcon = sticker;
       canvasElement.dispatchEvent(new Event("tool-moved"));
@@ -217,31 +216,48 @@ thickMarkerButton.addEventListener("click", () => {
 });
 app?.appendChild(thickMarkerButton);
 
+const breakElement2 = document.createElement("br");
+app?.appendChild(breakElement2);
+
 const exportButton = document.createElement("button");
 exportButton.textContent = "Export";
 exportButton.addEventListener("click", () => {
-    const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = 1024;
-    exportCanvas.height = 1024;
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = 1024;
+  exportCanvas.height = 1024;
 
-    const exportCtx = exportCanvas.getContext("2d")!;
-    exportCtx.scale(4, 4);
+  const exportCtx = exportCanvas.getContext("2d")!;
+  const scale = 4;
+  exportCtx.scale(scale, scale);
 
-    const oldContext = context;
-    context = exportCtx;
-    redraw();
-    context = oldContext;
+  const oldContext = context;
+  context = exportCtx;
+  redraw();
+  context = oldContext;
 
-    const link = document.createElement("a");
-    link.href = exportCanvas.toDataURL("image/png");
-    link.download = "drawing.png";
-    link.click();
+  const link = document.createElement("a");
+  link.href = exportCanvas.toDataURL("image/png");
+  link.download = "drawing.png";
+  link.click();
 });
 app?.appendChild(exportButton);
 
+const hueSlider = document.createElement("input");
+hueSlider.type = "range";
+hueSlider.min = "0";
+hueSlider.max = "360";
+hueSlider.value = "0";
+hueSlider.addEventListener("input", () => {
+  redraw();
+});
+app?.appendChild(hueSlider);
 
-const breakElement2 = document.createElement("br");
-app?.appendChild(breakElement2);
+const hueLabel = document.createElement("label");
+hueLabel.textContent = "Hue Slider:";
+app?.insertBefore(hueLabel, hueSlider);
+
+const breakElement3 = document.createElement("br");
+app?.appendChild(breakElement3);
 
 renderStickerButtons();
 
