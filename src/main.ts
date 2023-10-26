@@ -30,10 +30,45 @@ let currentPath: { x: number, y: number }[] = [];
 let currentThickness = 5;
 const redoStack: { x: number, y: number }[][] = [];
 
-canvasElement.addEventListener("mousedown", () => {
+// ToolPreviewCommand for previewing the tool
+class ToolPreviewCommand {
+    constructor(public x: number, public y: number, public width: number) {}
+
+    draw(ctx: CanvasRenderingContext2D) {
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.5)"; // semi-transparent black
+        ctx.lineWidth = this.width;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+}
+
+let toolPreviewCommand: ToolPreviewCommand | null = null;
+
+canvasElement.addEventListener("mousemove", (event: MouseEvent) => {
+    const x = event.clientX - canvasElement.offsetLeft;
+    const y = event.clientY - canvasElement.offsetTop;
+
+    if (drawing) {
+        currentPath.push({ x, y });
+        context?.lineTo(x, y);
+        context?.stroke();
+    } else {
+        toolPreviewCommand = new ToolPreviewCommand(x, y, currentThickness);
+        canvasElement.dispatchEvent(new Event("tool-moved"));
+    }
+});
+
+canvasElement.addEventListener("mousedown", (event: MouseEvent) => {
     drawing = true;
-    currentPath = [];
+    toolPreviewCommand = null; // remove the tool preview when drawing starts
+
+    // Start the path right away on mouse down
+    const x = event.clientX - canvasElement.offsetLeft;
+    const y = event.clientY - canvasElement.offsetTop;
+    currentPath = [{ x, y }];
     context?.beginPath();
+    context?.moveTo(x, y);
 });
 
 canvasElement.addEventListener("mouseup", () => {
@@ -43,16 +78,6 @@ canvasElement.addEventListener("mouseup", () => {
     }
     canvasElement.dispatchEvent(new Event("drawing-changed"));
     context?.closePath();
-});
-
-canvasElement.addEventListener("mousemove", (event: MouseEvent) => {
-    if (drawing) {
-        const point = {
-            x: event.clientX - canvasElement.offsetLeft,
-            y: event.clientY - canvasElement.offsetTop
-        };
-        currentPath.push(point);
-    }
 });
 
 canvasElement.addEventListener("drawing-changed", () => {
@@ -73,6 +98,14 @@ canvasElement.addEventListener("drawing-changed", () => {
             }
         }
     });
+
+    if (toolPreviewCommand) {
+        toolPreviewCommand.draw(context!);
+    }
+});
+
+canvasElement.addEventListener("tool-moved", () => {
+    canvasElement.dispatchEvent(new Event("drawing-changed"));
 });
 
 const clearButton = document.createElement("button");
