@@ -19,12 +19,15 @@ canvasElement.width = 256;
 canvasElement.height = 256;
 app?.appendChild(canvasElement);
 
+const breakElement = document.createElement("br");
+app?.appendChild(breakElement);
+
 const context = canvasElement.getContext("2d");
 let drawing = false;
 
 let paths: { x: number, y: number }[][] = [];
 let currentPath: { x: number, y: number }[] = [];
-let redoStack: { x: number, y: number }[][] = [];
+const redoStack: { x: number, y: number }[][] = [];
 
 canvasElement.addEventListener("mousedown", () => {
     drawing = true;
@@ -37,7 +40,7 @@ canvasElement.addEventListener("mouseup", () => {
     if (currentPath.length) {
         paths.push(currentPath);
     }
-    canvasElement.dispatchEvent(new Event('drawing-changed'));
+    canvasElement.dispatchEvent(new Event("drawing-changed"));
     context?.closePath();
 });
 
@@ -51,7 +54,7 @@ canvasElement.addEventListener("mousemove", (event: MouseEvent) => {
     }
 });
 
-canvasElement.addEventListener('drawing-changed', () => {
+canvasElement.addEventListener("drawing-changed", () => {
     context?.clearRect(0, 0, canvasElement.width, canvasElement.height);
     context!.lineWidth = 5;
     context!.lineCap = "round";
@@ -85,7 +88,7 @@ undoButton.addEventListener("click", () => {
     if (paths.length) {
         const poppedPath = paths.pop();
         redoStack.push(poppedPath!);
-        canvasElement.dispatchEvent(new Event('drawing-changed'));
+        canvasElement.dispatchEvent(new Event("drawing-changed"));
     }
 });
 app?.appendChild(undoButton);
@@ -96,7 +99,7 @@ redoButton.addEventListener("click", () => {
     if (redoStack.length) {
         const poppedRedoPath = redoStack.pop();
         paths.push(poppedRedoPath!);
-        canvasElement.dispatchEvent(new Event('drawing-changed'));
+        canvasElement.dispatchEvent(new Event("drawing-changed"));
     }
 });
 app?.appendChild(redoButton);
