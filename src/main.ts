@@ -3,7 +3,6 @@ import "./style.css";
 const app: HTMLDivElement = document.querySelector("#app")!;
 
 const gameName = "Wan's game";
-
 document.title = gameName;
 
 const header = document.createElement("h1");
@@ -23,29 +22,74 @@ const breakElement = document.createElement("br");
 app?.appendChild(breakElement);
 
 let context = canvasElement.getContext("2d")!;
-let drawing = false;
 
-let paths: { x: number; y: number }[][] = [];
-let currentPath: { x: number; y: number }[] = [];
+const DEFAULT_OFFSET_X = 0; 
+const DEFAULT_OFFSET_Y = 0; 
+
+class Path {
+  points: { x: number; y: number }[];
+  thickness: number;
+  sticker: string | null;
+
+  constructor(
+    points: { x: number; y: number }[],
+    thickness: number,
+    sticker: string | null = null,
+  ) {
+    this.points = points;
+    this.thickness = thickness;
+    this.sticker = sticker;
+  }
+
+  draw(context: CanvasRenderingContext2D) {
+    if (this.sticker) {
+      context.font = "32px monospace";
+      this.points.forEach((point) => {
+        context.fillText(this.sticker!, point.x, point.y);
+      });
+    } else if (this.points.length) {
+      context.beginPath();
+      context.lineWidth = this.thickness;
+      context.lineCap = "round";
+      context.lineJoin = "round";
+      context.strokeStyle = `hsl(${currentHue}, 100%, 50%)`;
+
+      context.moveTo(this.points[DEFAULT_OFFSET_X].x, this.points[DEFAULT_OFFSET_Y].y);
+      this.points.forEach((point) => {
+        context.lineTo(point.x, point.y);
+      });
+
+      context.stroke();
+    }
+  }
+}
+
+let paths: Path[] = [];
+let tempPathPoints: { x: number; y: number }[] = [];
 let currentThickness = 5;
 const thin = 4;
 const thick = 8;
 const defaultXY = 0;
 let stickerIcon = "*";
-const currentHue = 0;
-const redoStack: { x: number; y: number }[][] = [];
+const redoStack: Path[] = [];
+//const undoStack: Path[] = [];
 const stickers = ["🙂", "😺", "🌟", "🎨", "🚀", "💡", "🎈", "🍕", "🍀", "❤️"];
+let currentHue = 0;
+let isDrawing = false;
 
 class CursorCommand {
   constructor(
     public x: number,
     public y: number,
     public icon: string,
+    public isSticker: boolean,
   ) {}
 
   execute() {
-    context.font = "32px monospace";
-    context.fillText(this.icon, this.x, this.y);
+    if (this.isSticker) {
+      context.font = "32px monospace";
+      context.fillText(this.icon, this.x, this.y);
+    }
   }
 }
 
@@ -58,24 +102,29 @@ function redraw() {
     canvasElement.width,
     canvasElement.height,
   );
-  context.lineWidth = currentThickness;
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  context.strokeStyle = `hsl(${currentHue}, 100%, 50%)`;
 
+  // Drawing existing paths
   paths.forEach((path) => {
-    if (path.length) {
-      context?.beginPath();
-      const { x, y } = path[defaultXY];
-      context?.moveTo(x, y);
-
-      for (const point of path) {
-        context?.lineTo(point.x, point.y);
-      }
-      context?.stroke();
-    }
+    path.draw(context);
   });
 
+  // Drawing current temporary path (for real-time feedback)
+  if (isDrawing && tempPathPoints.length) {
+    context.beginPath();
+    context.lineWidth = currentThickness;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.strokeStyle = `hsl(${currentHue}, 100%, 50%)`;
+
+    context.moveTo(tempPathPoints[DEFAULT_OFFSET_X].x, tempPathPoints[DEFAULT_OFFSET_Y].y);
+    tempPathPoints.forEach((point) => {
+      context.lineTo(point.x, point.y);
+    });
+
+    context.stroke();
+  }
+
+  // Drawing the cursor
   if (currentCursor) {
     currentCursor.execute();
   }
@@ -97,27 +146,34 @@ function renderStickerButtons() {
   });
 }
 
-function tick() {
-  redraw();
-  requestAnimationFrame(tick);
-}
-tick();
+// function tick() {
+//   redraw();
+//   requestAnimationFrame(tick);
+// }
+// tick();
 
 canvasElement.addEventListener("mouseenter", (event: MouseEvent) => {
-  currentCursor = new CursorCommand(event.offsetX, event.offsetY, stickerIcon);
+  currentCursor = new CursorCommand(
+    event.offsetX,
+    event.offsetY,
+    stickerIcon,
+    true,
+  );
   canvasElement.dispatchEvent(new Event("drawing-changed"));
 });
 
 canvasElement.addEventListener("mousemove", (event: MouseEvent) => {
   const x = event.offsetX;
   const y = event.offsetY;
-  currentCursor = new CursorCommand(x, y, stickerIcon);
-  if (drawing) {
-    if (!currentPath.length) {
-      paths.push(currentPath);
+  currentCursor = new CursorCommand(x, y, stickerIcon, true); // True for sticker mode
+  if (isDrawing) {
+    if (stickerIcon !== "*") {
+      // Check if a sticker is selected
+      currentCursor.execute();
+    } else {
+      tempPathPoints.push({ x, y }); // Continue drawing line
+      redraw();
     }
-    currentPath.push({ x, y });
-    redraw();
   }
 });
 
@@ -127,24 +183,28 @@ canvasElement.addEventListener("mouseleave", () => {
 });
 
 canvasElement.addEventListener("mousedown", (event: MouseEvent) => {
-  drawing = true;
+  isDrawing = true;
   const x = event.offsetX;
   const y = event.offsetY;
-  currentCursor = new CursorCommand(x, y, stickerIcon);
-  context?.beginPath();
-  context?.moveTo(x, y);
-  currentPath = [{ x, y }];
+  if (stickerIcon !== "*") {
+    paths.push(new Path([{ x, y }], currentThickness, stickerIcon));
+    canvasElement.dispatchEvent(new Event("drawing-changed"));
+  } else {
+    //currentPathPoints = [{ x, y }];
+    tempPathPoints = [{ x, y }];
+  }
 });
 
 canvasElement.addEventListener("mouseup", () => {
-  drawing = false;
-  currentCursor = null;
-  if (currentPath.length) {
-    paths.push(currentPath);
-    currentPath = [];
+  isDrawing = false;
+  if (stickerIcon === "*") {
+    if (tempPathPoints.length) {
+      paths.push(new Path(tempPathPoints, currentThickness));
+      //currentPathPoints = [...tempPathPoints];
+    }
+    tempPathPoints = [];
+    canvasElement.dispatchEvent(new Event("drawing-changed"));
   }
-  canvasElement.dispatchEvent(new Event("drawing-changed"));
-  context?.closePath();
 });
 
 canvasElement.addEventListener("drawing-changed", () => {
@@ -163,7 +223,7 @@ const clearButton = document.createElement("button");
 clearButton.textContent = "Clear";
 clearButton.addEventListener("click", () => {
   paths = [];
-  context?.clearRect(
+  context.clearRect(
     defaultXY,
     defaultXY,
     canvasElement.width,
@@ -176,8 +236,8 @@ const undoButton = document.createElement("button");
 undoButton.textContent = "Undo";
 undoButton.addEventListener("click", () => {
   if (paths.length) {
-    const poppedPath = paths.pop();
-    redoStack.push(poppedPath!);
+    const poppedPath = paths.pop()!;
+    redoStack.push(poppedPath);
     canvasElement.dispatchEvent(new Event("drawing-changed"));
   }
 });
@@ -187,8 +247,8 @@ const redoButton = document.createElement("button");
 redoButton.textContent = "Redo";
 redoButton.addEventListener("click", () => {
   if (redoStack.length) {
-    const poppedRedoPath = redoStack.pop();
-    paths.push(poppedRedoPath!);
+    const poppedPath = redoStack.pop()!;
+    paths.push(poppedPath);
     canvasElement.dispatchEvent(new Event("drawing-changed"));
   }
 });
@@ -247,7 +307,9 @@ hueSlider.type = "range";
 hueSlider.min = "0";
 hueSlider.max = "360";
 hueSlider.value = "0";
-hueSlider.addEventListener("input", () => {
+hueSlider.addEventListener("input", (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  currentHue = parseInt(target.value, 10);
   redraw();
 });
 app?.appendChild(hueSlider);
