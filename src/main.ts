@@ -170,13 +170,13 @@ canvasElement.addEventListener("mousemove", (event: MouseEvent) => {
   if (isDrawing) {
     if (stickerIcon !== "*") {
       tempPathPoints = []; 
-      redraw();
+      canvasElement.dispatchEvent(new Event("drawing-changed"));
     } else {
       tempPathPoints.push({ x, y }); 
-      redraw();
+      canvasElement.dispatchEvent(new Event("drawing-changed"));
     }
   } else {
-    redraw();
+    canvasElement.dispatchEvent(new Event("drawing-changed"));
   }
 });
 
