@@ -73,7 +73,7 @@ const defaultXY = 0;
 let stickerIcon = "*";
 const redoStack: Path[] = [];
 //const undoStack: Path[] = [];
-const stickers = ["🙂", "😺", "🌟", "🎨", "🚀", "💡", "🎈", "🍕", "🍀", "❤️"];
+const stickers = ["*", "🙂", "😺", "🌟", "🎨", "🚀", "💡", "🎈", "🍕", "🍀", "❤️"];
 let currentHue = 0;
 let isDrawing = false;
 
@@ -258,10 +258,10 @@ const thinMarkerButton = document.createElement("button");
 thinMarkerButton.textContent = "Thin Marker";
 thinMarkerButton.addEventListener("click", () => {
   currentThickness = thin;
-  document
-    .querySelectorAll(".selectedTool")
-    .forEach((button) => button.classList.remove("selectedTool"));
+  stickerIcon = "*"; 
+  document.querySelectorAll(".selectedTool").forEach(button => button.classList.remove("selectedTool"));
   thinMarkerButton.classList.add("selectedTool");
+  canvasElement.dispatchEvent(new Event("tool-moved")); // Update drawing mode
 });
 app?.appendChild(thinMarkerButton);
 
@@ -269,10 +269,10 @@ const thickMarkerButton = document.createElement("button");
 thickMarkerButton.textContent = "Thick Marker";
 thickMarkerButton.addEventListener("click", () => {
   currentThickness = thick;
-  document
-    .querySelectorAll(".selectedTool")
-    .forEach((button) => button.classList.remove("selectedTool"));
+  stickerIcon = "*"; 
+  document.querySelectorAll(".selectedTool").forEach(button => button.classList.remove("selectedTool"));
   thickMarkerButton.classList.add("selectedTool");
+  canvasElement.dispatchEvent(new Event("tool-moved")); // Update drawing mode
 });
 app?.appendChild(thickMarkerButton);
 
