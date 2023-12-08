@@ -165,15 +165,18 @@ canvasElement.addEventListener("mouseenter", (event: MouseEvent) => {
 canvasElement.addEventListener("mousemove", (event: MouseEvent) => {
   const x = event.offsetX;
   const y = event.offsetY;
-  currentCursor = new CursorCommand(x, y, stickerIcon, true); // True for sticker mode
+  currentCursor = new CursorCommand(x, y, stickerIcon, true);
+
   if (isDrawing) {
     if (stickerIcon !== "*") {
-      // Check if a sticker is selected
-      currentCursor.execute();
+      tempPathPoints = []; 
+      redraw();
     } else {
-      tempPathPoints.push({ x, y }); // Continue drawing line
+      tempPathPoints.push({ x, y }); 
       redraw();
     }
+  } else {
+    redraw();
   }
 });
 
